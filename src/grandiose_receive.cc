@@ -142,6 +142,10 @@ void receiveComplete(napi_env env, napi_status asyncStatus, void *data)
   c->status = napi_set_named_property(env, result, "allowVideoFields", allowVideoFields);
   REJECT_STATUS;
 
+  napi_value closeFn;
+  c->status = napi_create_function(env,"close",NAPI_AUTO_LENGTH,closeReceive,nullptr,&closeFn);
+  c->status = napi_set_named_property(env,result,"close",closeFn);
+
   if (c->name != nullptr)
   {
     c->status = napi_create_string_utf8(env, c->name, NAPI_AUTO_LENGTH, &name);
@@ -359,6 +363,29 @@ napi_value receive(napi_env env, napi_callback_info info)
 
   return promise;
 }
+
+napi_value closeReceive(napi_env env, napi_callback_info info) {
+    napi_value thisValue;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisValue, nullptr);
+
+    napi_value embeddedValue;
+    napi_get_named_property(env, thisValue, "embedded", &embeddedValue);
+
+    void* recvData;
+    napi_get_value_external(env, embeddedValue, &recvData);
+
+    NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)recvData;
+    if (recv) {
+        NDIlib_recv_destroy(recv);
+        napi_value nullValue;
+        napi_get_null(env, &nullValue);
+        napi_set_named_property(env, thisValue, "embedded", nullValue);
+    }
+
+    return nullptr;
+}
+
+
 
 void videoReceiveExecute(napi_env env, void *data)
 {

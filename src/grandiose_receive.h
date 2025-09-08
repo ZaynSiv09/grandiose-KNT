@@ -20,6 +20,7 @@
 #include "grandiose_util.h"
 
 napi_value receive(napi_env env, napi_callback_info info);
+napi_value closeReceive(napi_env env, napi_callback_info info);
 napi_value videoReceive(napi_env env, napi_callback_info info);
 napi_value audioReceive(napi_env env, napi_callback_info info);
 napi_value metadataReceive(napi_env env, napi_callback_info info);

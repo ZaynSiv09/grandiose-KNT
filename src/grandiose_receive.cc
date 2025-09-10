@@ -29,11 +29,14 @@
 #include "grandiose_receive.h"
 #include "grandiose_util.h"
 
-void finalizeReceive(napi_env env, void *data, void *hint)
-{
-  printf("Releasing receiver.\n");
-  NDIlib_recv_destroy((NDIlib_recv_instance_t)data);
+void finalizeReceive(napi_env env, void *data, void *hint) {
+    NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)data;
+    if (recv != nullptr) {
+        printf("Releasing receiver (finalizer).\n");
+        NDIlib_recv_destroy(recv);
+    }
 }
+
 
 void receiveExecute(napi_env env, void *data)
 {
@@ -371,12 +374,14 @@ napi_value closeReceive(napi_env env, napi_callback_info info) {
     napi_value embeddedValue;
     napi_get_named_property(env, thisValue, "embedded", &embeddedValue);
 
-    void* recvData;
+    void* recvData = nullptr;
     napi_get_value_external(env, embeddedValue, &recvData);
 
     NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)recvData;
     if (recv) {
+        printf("Closing receiver (manual).\n");
         NDIlib_recv_destroy(recv);
+
         napi_value nullValue;
         napi_get_null(env, &nullValue);
         napi_set_named_property(env, thisValue, "embedded", nullValue);
@@ -384,6 +389,8 @@ napi_value closeReceive(napi_env env, napi_callback_info info) {
 
     return nullptr;
 }
+
+
 
 
 

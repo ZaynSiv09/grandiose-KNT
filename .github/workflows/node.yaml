@@ -7,7 +7,7 @@ on:
 
 env:
   NAPI_VERSION: 7
-  BINDING_NAME: grandiose
+  BINDING_NAME: grandiose-knt
 
 jobs:
   build-and-test:

@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "grandiose",
+      "target_name": "goodknt",
       "sources": [
         "src/grandiose_util.cc",
         "src/grandiose_find.cc",

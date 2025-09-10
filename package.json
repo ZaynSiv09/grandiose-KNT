@@ -1,7 +1,7 @@
 {
-  "name": "grandiose",
+  "name": "goodknt",
   "version": "0.1.0",
-  "description": "Node.JS native bindings to the Newtek NDI SDK.",
+  "description": "Version013.",
   "main": "index.js",
   "scripts": {
     "install": "pkg-prebuilds-verify ./binding-options.js || node-gyp rebuild",
@@ -48,13 +48,15 @@
     "node": ">=16.0"
   },
   "files": [
-    "src",
-    "lib",
-    "include",
+    "include/",
+    "lib/",
+    "src/",
+    "binding.gyp",
+    "binding-options.js",
     "index.d.ts",
     "index.js",
-    "binding-options.js",
-    "binding.gyp",
-    "prebuilds"
+    "package.json",
+    "README.md",
+    "LICENSE"
   ]
 }

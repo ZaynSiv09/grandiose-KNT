@@ -1,4 +1,4 @@
 module.exports = {
-  name: 'grandiose',
+  name: 'goodknt',
   napi_versions: [8],
 }

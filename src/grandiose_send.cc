@@ -1,17 +1,3 @@
-/* Copyright 2018 Streampunk Media Ltd.
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
 
 #include <cstddef>
 #include <Processing.NDI.Lib.h>
@@ -78,27 +64,6 @@ void sendComplete(napi_env env, napi_status asyncStatus, void* data) {
   REJECT_STATUS;
   c->status = napi_set_named_property(env, result, "video", videoFn);
   REJECT_STATUS;
-
-  // napi_value audioFn;
-  // c->status = napi_create_function(env, "audio", NAPI_AUTO_LENGTH, audioSend,
-  //   nullptr, &audioFn);
-  // REJECT_STATUS;
-  // c->status = napi_set_named_property(env, result, "audio", audioFn);
-  // REJECT_STATUS;
-
-  // napi_value metadataFn;
-  // c->status = napi_create_function(env, "metadata", NAPI_AUTO_LENGTH, metadataReceive,
-  //   nullptr, &metadataFn);
-  // REJECT_STATUS;
-  // c->status = napi_set_named_property(env, result, "metadata", metadataFn);
-  // REJECT_STATUS;
-
-  // napi_value dataFn;
-  // c->status = napi_create_function(env, "data", NAPI_AUTO_LENGTH, dataReceive,
-  //   nullptr, &dataFn);
-  // REJECT_STATUS;
-  // c->status = napi_set_named_property(env, result, "data", dataFn);
-  // REJECT_STATUS;
 
   napi_value name, groups, clockVideo, clockAudio;
   c->status = napi_create_string_utf8(env, c->name, NAPI_AUTO_LENGTH, &name);

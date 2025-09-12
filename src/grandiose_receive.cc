@@ -29,11 +29,10 @@
 #include "grandiose_receive.h"
 #include "grandiose_util.h"
 
-void finalizeReceive(napi_env env, void *data, void *hint) {
+void finalizeReceive(napi_env env, void* data, void* hint) {
     NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)data;
     if (recv != nullptr) {
-        printf("Releasing receiver (finalizer).\n");
-        NDIlib_recv_destroy(recv);
+        printf("[finalizeReceive] Receiver already destroyed, skipping.\n");
     }
 }
 
@@ -377,22 +376,23 @@ napi_value closeReceive(napi_env env, napi_callback_info info) {
     void* recvData = nullptr;
     napi_get_value_external(env, embeddedValue, &recvData);
 
-    NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)recvData;
-    if (recv) {
-        printf("Closing receiver (manual).\n");
-        NDIlib_recv_destroy(recv);
+    if (recvData != nullptr) {
+        NDIlib_recv_instance_t recv = (NDIlib_recv_instance_t)recvData;
+        printf("[closeReceive] Destroying receiver: %p\n", recv);
 
+        // 先置空 JS 对象引用，防止重复调用
         napi_value nullValue;
         napi_get_null(env, &nullValue);
         napi_set_named_property(env, thisValue, "embedded", nullValue);
+
+        // 延迟销毁，保证异步回调不再使用 recv
+        NDIlib_recv_destroy(recv);
+    } else {
+        printf("[closeReceive] Receiver already null.\n");
     }
 
     return nullptr;
 }
-
-
-
-
 
 void videoReceiveExecute(napi_env env, void *data)
 {
@@ -429,119 +429,136 @@ void videoReceiveExecute(napi_env env, void *data)
 
 void videoReceiveComplete(napi_env env, napi_status asyncStatus, void *data)
 {
-  dataCarrier *c = (dataCarrier *)data;
+    dataCarrier *c = (dataCarrier *)data;
 
-  if (asyncStatus != napi_ok)
-  {
-    c->status = asyncStatus;
-    c->errorMsg = "Async video frame receive failed to complete.";
-  }
-  REJECT_STATUS;
-
-  napi_value result;
-  c->status = napi_create_object(env, &result);
-  REJECT_STATUS;
-
-  int32_t ptps, ptpn;
-  ptps = (int32_t)(c->videoFrame.timestamp / 10000000);
-  ptpn = (c->videoFrame.timestamp % 10000000) * 100;
-
-  napi_value param;
-  c->status = napi_create_string_utf8(env, "video", NAPI_AUTO_LENGTH, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "type", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.xres, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "xres", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.yres, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "yres", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.frame_rate_N, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "frameRateN", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.frame_rate_D, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "frameRateD", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_double(env, (double)c->videoFrame.picture_aspect_ratio, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "pictureAspectRatio", param);
-  REJECT_STATUS;
-
-  napi_value params, paramn;
-  c->status = napi_create_int32(env, ptps, &params);
-  REJECT_STATUS;
-  c->status = napi_create_int32(env, ptpn, &paramn);
-  REJECT_STATUS;
-  c->status = napi_create_array(env, &param);
-  REJECT_STATUS;
-  c->status = napi_set_element(env, param, 0, params);
-  REJECT_STATUS;
-  c->status = napi_set_element(env, param, 1, paramn);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "timestamp", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.FourCC, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "fourCC", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.frame_format_type, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "frameFormatType", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, (int32_t)c->videoFrame.timecode / 10000000, &params);
-  REJECT_STATUS;
-  c->status = napi_create_int32(env, (c->videoFrame.timecode % 10000000) * 100, &paramn);
-  REJECT_STATUS;
-  c->status = napi_create_array(env, &param);
-  REJECT_STATUS;
-  c->status = napi_set_element(env, param, 0, params);
-  REJECT_STATUS;
-  c->status = napi_set_element(env, param, 1, paramn);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "timecode", param);
-  REJECT_STATUS;
-
-  c->status = napi_create_int32(env, c->videoFrame.line_stride_in_bytes, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "lineStrideBytes", param);
-  REJECT_STATUS;
-
-  if (c->videoFrame.p_metadata != nullptr)
-  {
-    c->status = napi_create_string_utf8(env, c->videoFrame.p_metadata, NAPI_AUTO_LENGTH, &param);
+    if (asyncStatus != napi_ok)
+    {
+        c->status = asyncStatus;
+        c->errorMsg = "Async video frame receive failed to complete.";
+    }
     REJECT_STATUS;
-    c->status = napi_set_named_property(env, result, "metadata", param);
+
+    napi_value result;
+    c->status = napi_create_object(env, &result);
     REJECT_STATUS;
-  }
 
-  c->status = napi_create_buffer_copy(env,
-                                      c->videoFrame.line_stride_in_bytes * c->videoFrame.yres,
-                                      (void *)c->videoFrame.p_data, nullptr, &param);
-  REJECT_STATUS;
-  c->status = napi_set_named_property(env, result, "data", param);
-  REJECT_STATUS;
+    int32_t ptps, ptpn;
+    ptps = (int32_t)(c->videoFrame.timestamp / 10000000);
+    ptpn = (c->videoFrame.timestamp % 10000000) * 100;
 
-  NDIlib_recv_free_video_v2(c->recv, &c->videoFrame);
+    napi_value param;
 
-  napi_status status;
-  status = napi_resolve_deferred(env, c->_deferred, result);
-  FLOATING_STATUS;
+    // 类型
+    c->status = napi_create_string_utf8(env, "video", NAPI_AUTO_LENGTH, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "type", param);
+    REJECT_STATUS;
 
-  tidyCarrier(env, c);
+    // 分辨率
+    c->status = napi_create_int32(env, c->videoFrame.xres, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "xres", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->videoFrame.yres, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "yres", param);
+    REJECT_STATUS;
+
+    // 帧率
+    c->status = napi_create_int32(env, c->videoFrame.frame_rate_N, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "frameRateN", param);
+    REJECT_STATUS;
+
+    c->status = napi_create_int32(env, c->videoFrame.frame_rate_D, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "frameRateD", param);
+    REJECT_STATUS;
+
+    // 画面比例
+    c->status = napi_create_double(env, (double)c->videoFrame.picture_aspect_ratio, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "pictureAspectRatio", param);
+    REJECT_STATUS;
+
+    // 时间戳
+    napi_value params, paramn;
+    c->status = napi_create_int32(env, ptps, &params);
+    REJECT_STATUS;
+    c->status = napi_create_int32(env, ptpn, &paramn);
+    REJECT_STATUS;
+    c->status = napi_create_array(env, &param);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 0, params);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 1, paramn);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "timestamp", param);
+    REJECT_STATUS;
+
+    // FourCC
+    c->status = napi_create_int32(env, c->videoFrame.FourCC, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "fourCC", param);
+    REJECT_STATUS;
+
+    // 帧格式类型
+    c->status = napi_create_int32(env, c->videoFrame.frame_format_type, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "frameFormatType", param);
+    REJECT_STATUS;
+
+    // Timecode
+    c->status = napi_create_int32(env, (int32_t)(c->videoFrame.timecode / 10000000), &params);
+    REJECT_STATUS;
+    c->status = napi_create_int32(env, (c->videoFrame.timecode % 10000000) * 100, &paramn);
+    REJECT_STATUS;
+    c->status = napi_create_array(env, &param);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 0, params);
+    REJECT_STATUS;
+    c->status = napi_set_element(env, param, 1, paramn);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "timecode", param);
+    REJECT_STATUS;
+
+    // 每行字节数
+    c->status = napi_create_int32(env, c->videoFrame.line_stride_in_bytes, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "lineStrideBytes", param);
+    REJECT_STATUS;
+
+    // 元数据
+    if (c->videoFrame.p_metadata != nullptr)
+    {
+        c->status = napi_create_string_utf8(env, c->videoFrame.p_metadata, NAPI_AUTO_LENGTH, &param);
+        REJECT_STATUS;
+        c->status = napi_set_named_property(env, result, "metadata", param);
+        REJECT_STATUS;
+    }
+
+    // 帧数据
+    c->status = napi_create_buffer_copy(env,
+                                        c->videoFrame.line_stride_in_bytes * c->videoFrame.yres,
+                                        (void *)c->videoFrame.p_data, nullptr, &param);
+    REJECT_STATUS;
+    c->status = napi_set_named_property(env, result, "data", param);
+    REJECT_STATUS;
+
+    // 回收视频帧
+    if (c->recv)
+    {
+        NDIlib_recv_free_video_v2(c->recv, &c->videoFrame);
+    }
+
+    // resolve deferred
+    napi_status status = napi_resolve_deferred(env, c->_deferred, result);
+    FLOATING_STATUS;
+
+    tidyCarrier(env, c);
 }
+
 
 napi_value videoReceive(napi_env env, napi_callback_info info)
 {
